@@ -39,19 +39,6 @@ namespace Coins
             }
 
             //-------------------------------------------------------------------------------------------------------------------------------------------------------------------
-            int breakingValueOf2ndNominal;
-
-            while(true) // breakingValueOf2ndNominal input
-            {
-                breakingValueOf2ndNominal = RequestIntFromConsoleInput("\nInput critical value for 2nd nominal : ", defaultValue: 10);
-
-                if(breakingValueOf2ndNominal < 2)
-                    WriteErrorMessage("\nError! Critical value for 2nd nominal must be >=2");
-                else
-                    break;
-            }
-
-            //-------------------------------------------------------------------------------------------------------------------------------------------------------------------
             double bestAverage = unitSize;
 
             int[] coinsKit = new int[kitSize];
@@ -70,23 +57,17 @@ namespace Coins
 
             while(nextKitExists)
             {
+                double average = CalcAverageCoinsForSummsRange(coinsKit, unitSize);
 
-                Average averageCoins = new();
-
-                SummChangingRun(1, unitSize, averageCoins);
-
-                if(averageCoins.Val < bestAverage)
+                if(average < bestAverage)
                 {
-                    bestAverage = averageCoins.Val;
+                    bestAverage = average;
                     coinsKit.CopyTo(bestKit, 0);
 
                     Console.WriteLine($"{MakeKitString(bestKit)} : {bestAverage.ToString().FormToLengthRight(8)}");
                 }
 
                 nextKitExists = TryChangetoNextKit(coinsKit, unitSize - 1);
-
-                if(coinsKit[1] > breakingValueOf2ndNominal)
-                    break;
             }
 
             TimeSpan timeLeft = DateTime.Now - startTime;
@@ -110,23 +91,6 @@ namespace Coins
 
             if(answer.ToLower() == "y")
                 goto start;
-
-            // Inner methods
-            void SummChangingRun(int startValue, int finishValue, Average result)
-            {
-                for(int currentSumm = startValue; currentSumm < finishValue; currentSumm++)
-                    result.Add(CalcLowestCoinsNeed(coinsKit, currentSumm));
-            }
-
-            string MakeKitString(int[] array)
-            {
-                string result = "1";
-
-                for(int i = 1; i < array.Length; i++)
-                    result += $", {array[i]}";
-
-                return result;
-            }
         }
 
         static int RequestIntFromConsoleInput(string requestMessage = "\nInput value: ", string errorMessage = "\nError! Please enter int value", string defaultValueKey = "", int defaultValue = 0)
@@ -196,28 +160,49 @@ namespace Coins
             return success;
         }
 
-        static int CalcLowestCoinsNeed(int[] kit, int summ)
+        static double CalcAverageCoinsForSummsRange(int[] coinsKit, int maxSumm)
         {
-            int lowestCoinsNeed = int.MaxValue;
+            Average result = new Average();
 
-            for(int currentKitSize = 2; currentKitSize <= kit.Length; currentKitSize++)
+            int[] minCoinNumbers = new int[maxSumm];
+
+            minCoinNumbers[0] = 0;
+
+            for(int targetSumm = 1; targetSumm < maxSumm; targetSumm++)
             {
-                int coinsNeed = 0;
-                int change = summ;
+                int minCoinsNumberForTargetSumm = int.MaxValue;
 
-                for(int i = currentKitSize - 1; i >= 0; i--)
+                for(int jumpPoint = 0; jumpPoint < targetSumm; jumpPoint++)
                 {
-                    int numberOfCoins = change / kit[i];
+                    for(int coinNominalIndex = coinsKit.Length - 1; coinNominalIndex >= 0; coinNominalIndex--)
+                    {
+                        if(jumpPoint + coinsKit[coinNominalIndex] == targetSumm)
+                        {
+                            int coinsForCurrentTargetSumm = minCoinNumbers[jumpPoint] + 1;
 
-                    coinsNeed += numberOfCoins;
-                    change -= numberOfCoins * kit[i];
+                            if(coinsForCurrentTargetSumm < minCoinsNumberForTargetSumm)
+                                minCoinsNumberForTargetSumm = coinsForCurrentTargetSumm;
+
+                            break;
+                        }
+                    }
                 }
 
-                if(coinsNeed < lowestCoinsNeed)
-                    lowestCoinsNeed = coinsNeed;
+                minCoinNumbers[targetSumm] = minCoinsNumberForTargetSumm;
+                result.Add(minCoinsNumberForTargetSumm);
             }
 
-            return lowestCoinsNeed;
+            return result.Val;
+        }
+
+        static string MakeKitString(int[] array)
+        {
+            string result = "1";
+
+            for(int i = 1; i < array.Length; i++)
+                result += $", {array[i]}";
+
+            return result;
         }
     }
 }
