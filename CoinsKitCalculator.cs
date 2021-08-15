@@ -70,11 +70,6 @@ namespace Coins
 
             while(nextKitExists)
             {
-                void SummChangingRun(int startValue, int finishValue, Average result)
-                {
-                    for(int currentSumm = startValue; currentSumm < finishValue; currentSumm++)
-                        result.Add(CalcLowestCoinsNeed(coinsKit, currentSumm));
-                }
 
                 Average averageCoins = new();
 
@@ -116,7 +111,13 @@ namespace Coins
             if(answer.ToLower() == "y")
                 goto start;
 
-            // Inner method
+            // Inner methods
+            void SummChangingRun(int startValue, int finishValue, Average result)
+            {
+                for(int currentSumm = startValue; currentSumm < finishValue; currentSumm++)
+                    result.Add(CalcLowestCoinsNeed(coinsKit, currentSumm));
+            }
+
             string MakeKitString(int[] array)
             {
                 string result = "1";
