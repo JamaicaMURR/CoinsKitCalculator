@@ -1,5 +1,6 @@
 ﻿using System;
 using Bycicles;
+using Bycicles.Ranges;
 using Bycicles.StringExtensions;
 
 namespace Coins
@@ -28,12 +29,25 @@ namespace Coins
 
             while(true) // kitSize input
             {
-                kitSize = RequestIntFromConsoleInput($"\nHow many nominals of coins in coins kit? (1 < Kit size < {unitSize}): ", defaultValue: 4);
+                kitSize = RequestIntFromConsoleInput($"\nHow many nominals of coins in coins kit? (1 < Kit size < {unitSize}): ", defaultValue: 4.NotAbove(unitSize - 1));
 
                 if(kitSize <= 1)
                     WriteErrorMessage("\nError! Kit size must be > 1");
                 else if(kitSize >= unitSize)
                     WriteErrorMessage($"\nError! Kit size must be < {unitSize}");
+                else
+                    break;
+            }
+
+            //-------------------------------------------------------------------------------------------------------------------------------------------------------------------
+            int podiumSize;
+
+            while(true) // podiumSize input
+            {
+                podiumSize = RequestIntFromConsoleInput($"\nHow many of best results you want? (default 3) : ", defaultValue: 3);
+
+                if(podiumSize < 1)
+                    WriteErrorMessage("\nError! Number of best results must be >= 1");
                 else
                     break;
             }
@@ -46,9 +60,7 @@ namespace Coins
             for(int i = 1; i <= coinsKit.Length; i++)
                 coinsKit[i - 1] = i;
 
-            int[] bestKit = new int[coinsKit.Length];
-
-            coinsKit.CopyTo(bestKit, 0);
+            ScoreBoard<int[], double> scoreBoard = new(podiumSize, ScoreBoardMode.LowerBest);
 
             //-------------------------------------------------------------------------------------------------------------------------------------------------------------------
             DateTime startTime = DateTime.Now;
@@ -59,19 +71,14 @@ namespace Coins
             {
                 double average = CalcAverageCoinsForSummsRange(coinsKit, unitSize);
 
-                if(average < bestAverage)
-                {
-                    bestAverage = average;
-                    coinsKit.CopyTo(bestKit, 0);
-
-                    Console.WriteLine($"{MakeKitString(bestKit)} : {bestAverage.ToString().FormToLengthRight(8)}");
-                }
+                scoreBoard.TryToInsert((int[])coinsKit.Clone(), average);
 
                 nextKitExists = TryChangetoNextKit(coinsKit, unitSize - 1);
             }
 
             TimeSpan timeLeft = DateTime.Now - startTime;
 
+            //-------------------------------------------------------------------------------------------------------------------------------------------------------------------
             Console.ForegroundColor = ConsoleColor.Green;
 
             Console.WriteLine($"\nCalculations completed at {timeLeft.Hours} h : {timeLeft.Minutes} m : {timeLeft.Seconds} s : {timeLeft.Milliseconds} ms");
@@ -79,18 +86,31 @@ namespace Coins
             Console.BackgroundColor = ConsoleColor.White;
             Console.ForegroundColor = ConsoleColor.DarkBlue;
 
-            Console.WriteLine($"\nBest coins kit is {MakeKitString(bestKit)}");
-            Console.WriteLine($"\n{bestAverage.ToString().FormToLengthRight(8)} - average coins needed to find change");
+            if(scoreBoard.Count > 1)
+                Console.WriteLine($"\nBest coin kits is : ");
+            else
+                Console.WriteLine($"\nBest coin kit is : ");
+
+            for(int i = 0; i < scoreBoard.Count; i++)
+                Console.WriteLine($"\n{MakeKitString(scoreBoard[i].Item1).FormToLengthRight(kitSize * 4)} | Average : {scoreBoard[i].Item2.ToString().FormToLengthRight(9)}");
+
             Console.WriteLine($"\nAt unit on {unitSize}");
 
             Console.ResetColor();
 
-            Console.WriteLine("\nRestart? (Y/N) :");
+            Console.Write("\nRestart? (Y/N) : ");
+
+            Console.ForegroundColor = ConsoleColor.Yellow;
 
             string answer = Console.ReadLine();
 
+            Console.ResetColor();
+
             if(answer.ToLower() == "y")
+            {
+                Console.Clear();
                 goto start;
+            }
         }
 
         static int RequestIntFromConsoleInput(string requestMessage = "\nInput value: ", string errorMessage = "\nError! Please enter int value", string defaultValueKey = "", int defaultValue = 0)
@@ -102,7 +122,11 @@ namespace Coins
             {
                 Console.Write(requestMessage);
 
+                Console.ForegroundColor = ConsoleColor.Yellow;
+
                 string inputValue = Console.ReadLine();
+
+                Console.ResetColor();
 
                 if(inputValue == defaultValueKey)
                 {
@@ -170,26 +194,17 @@ namespace Coins
 
             for(int targetSumm = 1; targetSumm < maxSumm; targetSumm++)
             {
-                int minCoinsNumberForTargetSumm = int.MaxValue;
+                minCoinNumbers[targetSumm] = int.MaxValue;
 
-                for(int jumpPoint = 0; jumpPoint < targetSumm; jumpPoint++)
+                for(int coinNominalIndex = coinsKit.Length - 1; coinNominalIndex >= 0; coinNominalIndex--)
                 {
-                    for(int coinNominalIndex = coinsKit.Length - 1; coinNominalIndex >= 0; coinNominalIndex--)
-                    {
-                        if(jumpPoint + coinsKit[coinNominalIndex] == targetSumm)
-                        {
-                            int coinsForCurrentTargetSumm = minCoinNumbers[jumpPoint] + 1;
+                    int diff = targetSumm - coinsKit[coinNominalIndex];
 
-                            if(coinsForCurrentTargetSumm < minCoinsNumberForTargetSumm)
-                                minCoinsNumberForTargetSumm = coinsForCurrentTargetSumm;
-
-                            break;
-                        }
-                    }
+                    if(diff >= 0 && minCoinNumbers[diff] + 1 < minCoinNumbers[targetSumm])
+                        minCoinNumbers[targetSumm] = minCoinNumbers[diff] + 1;
                 }
 
-                minCoinNumbers[targetSumm] = minCoinsNumberForTargetSumm;
-                result.Add(minCoinsNumberForTargetSumm);
+                result.Add(minCoinNumbers[targetSumm]);
             }
 
             return result.Val;
